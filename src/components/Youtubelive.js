@@ -1,7 +1,9 @@
 import { useState } from "react";
 
 const YouTubeLive = () => {
-  const [selectedCategory, setSelectedCategory] = useState("Ankara Bilkent Sports International");
+  const [selectedCategory, setSelectedCategory] = useState(
+    "Ankara Bilkent Sports International"
+  );
   const [selectedCourt, setSelectedCourt] = useState("Kort 1");
 
   // Kategoriler (şimdilik tek kategori)
@@ -13,7 +15,7 @@ const YouTubeLive = () => {
   // Kortlara göre video ID’leri
   const videos = {
     "Kort 1": "abc123XYZ", // Buraya kendi canlı yayın ID’nizi girin
-    "Kort 2": "mKCieTImjvU" // Verdiğin YouTube linkinin ID'si
+    "Kort 2": "mKCieTImjvU", // Verdiğin YouTube linkinin ID'si
   };
 
   return (
@@ -23,9 +25,14 @@ const YouTubeLive = () => {
       {/* Kategori Seçimi */}
       <div style={{ marginBottom: "20px" }}>
         <label style={{ marginRight: "10px" }}>Kategori:</label>
-        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
           {categories.map((cat, index) => (
-            <option key={index} value={cat}>{cat}</option>
+            <option key={index} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
       </div>
@@ -33,9 +40,14 @@ const YouTubeLive = () => {
       {/* Kort Seçimi */}
       <div style={{ marginBottom: "20px" }}>
         <label style={{ marginRight: "10px" }}>Kort:</label>
-        <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)}>
+        <select
+          value={selectedCourt}
+          onChange={(e) => setSelectedCourt(e.target.value)}
+        >
           {courts.map((court, index) => (
-            <option key={index} value={court}>{court}</option>
+            <option key={index} value={court}>
+              {court}
+            </option>
           ))}
         </select>
       </div>
@@ -43,18 +55,16 @@ const YouTubeLive = () => {
       {/* YouTube Embed */}
       <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
         <iframe
-          src={`https://www.youtube.com/embed/${videos[selectedCourt]}?autoplay=1`}
-          frameBorder="0"
-          allow="autoplay; encrypted-media"
+          src="https://www.youtube.com/embed/OypHR407_GU?autoplay=1&rel=0"
+          allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
+            inset: 0, // top/left/right/bottom = 0
             width: "100%",
-            height: "100%"
+            height: "100%",
           }}
-          title="YouTube Live"
+          title="YouTube player"
         />
       </div>
     </div>
