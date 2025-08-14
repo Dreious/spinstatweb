@@ -12,7 +12,7 @@ const YouTubeLive = () => {
 
   // Kortlara göre video ID’leri
   const videos = {
-    "Kort 1": "abc123XYZ", // Buraya kendi canlı yayın ID’nizi girin
+    "Kort 1": "aK4V24r1ioU", // Buraya kendi canlı yayın ID’nizi girin
     "Kort 2": "mKCieTImjvU" // Verdiğin YouTube linkinin ID'si
   };
 

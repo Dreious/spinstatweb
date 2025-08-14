@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { useAuth } from "../context/AuthContext";
 
 const MatchControl = () => {
-  const [step, setStep] = useState("start"); // start | selectHall | selectCourt | ready | running
-  const [selectedHall, setSelectedHall] = useState("");
-  const [selectedCourt, setSelectedCourt] = useState("");
+  const { user } = useAuth();
+  const [step, setStep] = useState("start");
+  const [matchCode, setMatchCode] = useState("");
   const [time, setTime] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
 
-  const halls = ["Ankara Bilkent Sports International", "İstanbul Ataşehir Sports", "İzmir Bornova Club"];
-  const courts = ["Kort 1", "Kort 2", "Kort 3"];
-
-  // Timer
   useEffect(() => {
     let interval = null;
     if (timerActive) {
@@ -23,34 +22,90 @@ const MatchControl = () => {
     return () => clearInterval(interval);
   }, [timerActive]);
 
-  const handleStartClick = () => {
-    setStep("selectHall");
+  const handleMatchStart = async () => {
+    if (!matchCode || !user) {
+      alert("Kod girin ve giriş yapmış olun.");
+      return;
+    }
+
+    try {
+      // 1️⃣ API isteği
+      const res = await fetch(`https://e97aeec9e2a3.ngrok-free.app/v1/courts/${matchCode}/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+          userId: user.uid, // Kullanıcının Firestore UID'si
+          source: "admin",
+          meta: { quality: "1080p", duration: 3600 }
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`API isteği başarısız: ${res.status}`);
+      }
+
+      // 2️⃣ Firestore'a maç geçmişini kaydet
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      let matchHistory = {};
+      if (userSnap.exists() && userSnap.data().matchHistory) {
+        matchHistory = userSnap.data().matchHistory;
+      }
+
+      const matchCount = Object.keys(matchHistory).length;
+      const nextMatchKey = `match${matchCount + 1}`;
+
+      matchHistory[nextMatchKey] = {
+        kort: matchCode,
+        matchStartTime: new Date(),
+      };
+
+      await updateDoc(userRef, { matchHistory });
+
+      // 3️⃣ Timer başlat
+      setTimerActive(true);
+      setStep("running");
+    } catch (error) {
+      console.error("Hata:", error);
+      alert("Maç başlatılamadı. Lütfen tekrar deneyin.");
+    }
   };
 
-  const handleHallSelect = (e) => {
-    setSelectedHall(e.target.value);
-    setStep("selectCourt");
+  const handleMatchEnd = async () => {
+    if (!matchCode || !user) {
+      alert("Kod girin ve giriş yapmış olun.");
+      return;
+    }
+
+    try {
+      // 1️⃣ API isteği
+      const res = await fetch(`https://e97aeec9e2a3.ngrok-free.app/v1/courts/${matchCode}/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "stop",
+          userId: user.uid,
+          source: "admin"
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`API isteği başarısız: ${res.status}`);
+      }
+
+      // 2️⃣ Timer durdur
+      setTimerActive(false);
+      setStep("start");
+      setMatchCode("");
+      setTime(0);
+    } catch (error) {
+      console.error("Hata:", error);
+      alert("Maç bitirilemedi. Lütfen tekrar deneyin.");
+    }
   };
 
-  const handleCourtSelect = (e) => {
-    setSelectedCourt(e.target.value);
-    setStep("ready");
-  };
-
-  const handleMatchStart = () => {
-    setTimerActive(true);
-    setStep("running");
-  };
-
-  const handleMatchEnd = () => {
-    setTimerActive(false);
-    setStep("start");
-    setSelectedHall("");
-    setSelectedCourt("");
-    setTime(0);
-  };
-
-  // Timer format
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -62,52 +117,17 @@ const MatchControl = () => {
       <h1>Maç Kontrol</h1>
 
       {step === "start" && (
-        <button
-          onClick={handleStartClick}
-          style={buttonStyle("#28a745")}
-        >
-          Maça Başla
-        </button>
-      )}
-
-      {step === "selectHall" && (
         <div>
-          <h3>Spor Salonunu Seç</h3>
-          <select value={selectedHall} onChange={handleHallSelect} style={selectStyle}>
-            <option value="">Seçiniz</option>
-            {halls.map((hall, idx) => (
-              <option key={idx} value={hall}>
-                {hall}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {step === "selectCourt" && (
-        <div>
-          <h3>{selectedHall} için Kort Seç</h3>
-          <select value={selectedCourt} onChange={handleCourtSelect} style={selectStyle}>
-            <option value="">Seçiniz</option>
-            {courts.map((court, idx) => (
-              <option key={idx} value={court}>
-                {court}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {step === "ready" && (
-        <div>
-          <h3>
-            Seçilen: {selectedHall} - {selectedCourt}
-          </h3>
-          <button
-            onClick={handleMatchStart}
-            style={buttonStyle("#007bff")}
-          >
-            Başlat
+          <input
+            type="text"
+            placeholder="Kort Kodu (örn: court-001)"
+            value={matchCode}
+            onChange={(e) => setMatchCode(e.target.value)}
+            style={inputStyle}
+          />
+          <br />
+          <button onClick={handleMatchStart} style={buttonStyle("#28a745")}>
+            Maça Başla
           </button>
         </div>
       )}
@@ -115,11 +135,10 @@ const MatchControl = () => {
       {step === "running" && (
         <div>
           <h2>Maç Devam Ediyor</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold" }}>{formatTime(time)}</p>
-          <button
-            onClick={handleMatchEnd}
-            style={buttonStyle("#dc3545")}
-          >
+          <p style={{ fontSize: "24px", fontWeight: "bold" }}>
+            Süre: {formatTime(time)}
+          </p>
+          <button onClick={handleMatchEnd} style={buttonStyle("#dc3545")}>
             Maçı Bitir
           </button>
         </div>
@@ -128,10 +147,10 @@ const MatchControl = () => {
   );
 };
 
-// Stil Fonksiyonları
+// Stiller
 const buttonStyle = (bgColor) => ({
   padding: "15px 30px",
-  margin: "10px",
+  marginTop: "10px",
   fontSize: "18px",
   backgroundColor: bgColor,
   color: "white",
@@ -140,10 +159,11 @@ const buttonStyle = (bgColor) => ({
   cursor: "pointer",
 });
 
-const selectStyle = {
+const inputStyle = {
   padding: "10px",
   fontSize: "16px",
-  marginTop: "10px",
+  marginBottom: "10px",
+  width: "250px",
 };
 
 export default MatchControl;
